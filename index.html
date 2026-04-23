@@ -1,291 +1,62 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <!-- <meta name="viewport" content="width=device-width, initial-scale=1.0" /> -->
-  <title>AR Sunflower – tinker.obj Overlay</title>
+<!-- import aframe and then ar.js with image tracking / location based features -->
+<script src="https://cdn.jsdelivr.net/gh/aframevr/aframe@1c2407b26c61958baa93967b5412487cd94b290b/dist/aframe-master.min.js"></script>
+<script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
 
-  <!-- A-Frame -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+<!-- style for the loader -->
+<style>
+  .arjs-loader {
+    height: 100%;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
 
-  <!-- AR.js with image tracking support (NFT + image target) -->
-  <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+  .arjs-loader div {
+    text-align: center;
+    font-size: 1.25em;
+    color: white;
+  }
+</style>
 
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { overflow: hidden; background: #000; font-family: 'Courier New', monospace; }
-
-    /* HUD overlay */
-    #hud {
-      position: fixed;
-      top: 0; left: 0; right: 0;
-      z-index: 999;
-      pointer-events: none;
-    }
-
-    #hud-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 20px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.75) 0%, transparent 100%);
-    }
-
-    #hud-title {
-      font-size: 13px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: #f5c842;
-    }
-
-    #status-dot {
-      width: 9px; height: 9px;
-      border-radius: 50%;
-      background: #555;
-      box-shadow: 0 0 0 2px rgba(255,255,255,0.15);
-      transition: background 0.4s, box-shadow 0.4s;
-    }
-    #status-dot.found {
-      background: #4dff91;
-      box-shadow: 0 0 8px #4dff91, 0 0 0 2px rgba(77,255,145,0.3);
-      animation: pulse 1.4s ease-in-out infinite;
-    }
-
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 8px #4dff91, 0 0 0 2px rgba(77,255,145,0.3); }
-      50%       { box-shadow: 0 0 20px #4dff91, 0 0 0 6px rgba(77,255,145,0.15); }
-    }
-
-    #status-label {
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      color: #aaa;
-      margin-left: 8px;
-      transition: color 0.4s;
-    }
-    #status-label.found { color: #4dff91; }
-
-    /* Scanning reticle shown while searching */
-    #scan-ui {
-      position: fixed;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      pointer-events: none;
-      z-index: 998;
-      transition: opacity 0.5s;
-    }
-    #scan-ui.hidden { opacity: 0; }
-
-    .reticle {
-      width: 200px; height: 200px;
-      position: relative;
-    }
-    .corner {
-      position: absolute;
-      width: 28px; height: 28px;
-      border-color: #f5c842;
-      border-style: solid;
-      opacity: 0.85;
-    }
-    .corner.tl { top: 0; left: 0;  border-width: 3px 0 0 3px; }
-    .corner.tr { top: 0; right: 0; border-width: 3px 3px 0 0; }
-    .corner.bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; }
-    .corner.br { bottom: 0; right: 0; border-width: 0 3px 3px 0; }
-
-    .scan-line {
-      position: absolute;
-      left: 3px; right: 3px;
-      height: 2px;
-      background: linear-gradient(90deg, transparent, #f5c842, transparent);
-      animation: scan 2s ease-in-out infinite;
-      top: 3px;
-    }
-    @keyframes scan {
-      0%   { top: 3px;   opacity: 0.9; }
-      50%  { top: 168px; opacity: 0.9; }
-      100% { top: 3px;   opacity: 0.9; }
-    }
-
-    #scan-label {
-      margin-top: 22px;
-      font-size: 12px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: #f5c842;
-      opacity: 0.8;
-      animation: blink 2s ease-in-out infinite;
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 0.8; }
-      50%       { opacity: 0.3; }
-    }
-
-    /* Bottom instruction strip */
-    #instructions {
-      position: fixed;
-      bottom: 0; left: 0; right: 0;
-      padding: 14px 20px;
-      background: linear-gradient(0deg, rgba(0,0,0,0.75) 0%, transparent 100%);
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      color: rgba(255,255,255,0.45);
-      text-align: center;
-      z-index: 999;
-      pointer-events: none;
-    }
-  </style>
-</head>
-<body>
-
-  <!-- HUD -->
-  <div id="hud">
-    <div id="hud-bar">
-      <span id="hud-title">AR · Sunflower Target</span>
-      <div style="display:flex;align-items:center;gap:0">
-        <div id="status-dot"></div>
-        <span id="status-label">&nbsp;SEARCHING</span>
-      </div>
-    </div>
+<body style="margin : 0px; overflow: hidden;">
+  <!-- minimal loader shown until image descriptors are loaded. Loading may take a while according to the device computational power -->
+  <div class="arjs-loader">
+    <div>Loading, please wait...</div>
   </div>
 
-  <!-- Scan UI -->
-  <div id="scan-ui">
-    <div class="reticle">
-      <div class="corner tl"></div>
-      <div class="corner tr"></div>
-      <div class="corner bl"></div>
-      <div class="corner br"></div>
-      <div class="scan-line"></div>
-    </div>
-    <div id="scan-label">Point at sunflower image</div>
-  </div>
-
-  <!-- Bottom hint -->
-  <div id="instructions">
-    Allow camera access · Hold device steady · Ensure good lighting
-  </div>
-
-  <!--
-    ═══════════════════════════════════════════════════════════════════
-    A-Frame + AR.js Scene
-    ───────────────────────────────────────────────────────────────────
-    • renderer:logarithmicDepthBuffer=true  → prevents z-fighting on
-      models placed close to a flat marker surface
-    • arjs: sourceType=webcam, trackingMethod=best (uses NFT/image
-      tracking), debugUIEnabled=false hides the debug canvas overlay
-    ═══════════════════════════════════════════════════════════════════
-  -->
+  <!-- a-frame scene -->
   <a-scene
-    vr-mode-ui="enabled: false"
-    renderer="logarithmicDepthBuffer: true; antialias: true;"
+    vr-mode-ui="enabled: false;"
+    renderer="logarithmicDepthBuffer: true;"
     embedded
-    arjs="sourceType: webcam;
-          trackingMethod: best;
-          debugUIEnabled: false;
-          detectionMode: mono_and_matrix;"
-    loading-screen="enabled: false"
+    arjs="trackingMethod: best; sourceType: webcam;debugUIEnabled: false;"
   >
-
-    <!-- ── Assets ─────────────────────────────────────────────────── -->
-    <a-assets timeout="30000">
-      <!--
-        Place your OBJ + MTL files in the same directory as this HTML.
-        Adjust the src paths if they live in a sub-folder (e.g. models/).
-      -->
-      <a-asset-item id="tinker-obj" src="tinker.obj"></a-asset-item>
-      <a-asset-item id="tinker-mtl" src="tinker.mtl"></a-asset-item>
-    </a-assets>
-
-    <!-- ── Camera ────────────────────────────────────────────────── -->
-    <a-camera></a-camera>
-
-    <!-- ── Image-target entity ───────────────────────────────────── -->
-    <!--
-      NFT descriptor files are pre-compiled from your source image using
-      the NFT marker creator tool:
-        https://carnaux.github.io/NFT-Marker-Creator/
-
-      This generates three files that share a base name:
-        sunflower_image.fset
-        sunflower_image.fset3
-        sunflower_image.iset
-
-      Set  url  to the base path WITHOUT extension.
-      Smooth tracking values can be tuned to taste.
-    -->
+    <!-- a-nft is the anchor that defines an Image Tracking entity -->
+    <!-- on 'url' use the path to the Image Descriptors created before. -->
+    <!-- the path should end with the name without the extension e.g. if file is 'pinball.fset' the path should end with 'pinball' -->
     <a-nft
       type="nft"
       url="sunflower_image"
       smooth="true"
       smoothCount="10"
-      smoothTolerance="0.01"
+      smoothTolerance=".01"
       smoothThreshold="5"
-      raycaster="objects: .clickable"
-      emitevents="true"
-      id="sunflower-target"
     >
-      <!--
-        The OBJ model is a child of the NFT anchor so it moves with the target.
-
-        Positioning notes
-        ─────────────────
-        • position  – Y lifts the model off the marker surface.
-                      X/Z centres it over the image.
-        • rotation  – OBJ models are often exported with different axis
-                      conventions. Common fix: rotation="-90 0 0".
-        • scale     – Adjust so the model fits the physical image size.
-                      Start with "0.5 0.5 0.5" and tune from there.
-      -->
+      <!-- as a child of the a-nft entity, you can define the content to show. here's a GLTF model entity -->
       <a-entity
-        obj-model="obj: #tinker-obj; mtl: #tinker-mtl"
-        position="0 0.05 0"
-        rotation="-90 0 0"
-        scale="0.5 0.5 0.5"
-        animation="property: rotation;
-                   to: -90 360 0;
-                   loop: true;
-                   dur: 8000;
-                   easing: linear"
-        class="clickable"
-        id="tinker-model"
-      ></a-entity>
+        gltf-model="trex.gltf"
+        scale="5 5 5"
+        position="50 150 0"
+      >
+      </a-entity>
     </a-nft>
-
+    <!-- static camera that moves according to the device movemenents -->
+    <a-entity camera></a-entity>
   </a-scene>
-
-  <!-- ── Status feedback script ──────────────────────────────────── -->
-  <script>
-    const dot    = document.getElementById('status-dot');
-    const label  = document.getElementById('status-label');
-    const scanUI = document.getElementById('scan-ui');
-    const target = document.getElementById('sunflower-target');
-
-    // AR.js fires these events on the NFT entity
-    target.addEventListener('markerFound', () => {
-      dot.classList.add('found');
-      label.classList.add('found');
-      label.textContent = '\u00a0TARGET LOCKED';
-      scanUI.classList.add('hidden');
-    });
-
-    target.addEventListener('markerLost', () => {
-      dot.classList.remove('found');
-      label.classList.remove('found');
-      label.textContent = '\u00a0SEARCHING';
-      scanUI.classList.remove('hidden');
-    });
-
-    // Hide browser's default loading overlay if it appears
-    document.addEventListener('DOMContentLoaded', () => {
-      const sceneEl = document.querySelector('a-scene');
-      sceneEl.addEventListener('loaded', () => {
-        console.log('[AR] Scene loaded – point camera at sunflower image.');
-      });
-    });
-  </script>
-
 </body>
-</html>
