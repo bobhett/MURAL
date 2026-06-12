@@ -35,17 +35,14 @@
         embedded arjs='trackingMethod: best; sourceType: webcam; debugUIEnabled: false;'>
 
         <!-- use rawgithack to retrieve the correct url for nft marker (see 'trex' below) -->
-        <a-entity light="type: ambient; color: #FFFFFF; intensity: 1"></a-entity>
-        <a-entity light="type: directional; color: #FFFFFF; intensity: 0.6" position="1 2 1"></a-entity>
         <a-nft
             type='nft' url='/MURAL/butterfly'
             smooth='true' smoothCount='10' smoothTolerance='0.01' smoothThreshold='5'>
-            <a-entity
-            gltf-model="/MURAL/butterfly.glb"
-            scale="0.3 0.3 0.3"
-            position="0 3 -1">
-            >
-            </a-entity>
+          <a-entity
+            gltf-model="/MURAL/butterfly_normalized.glb"
+            scale="1 1 1"
+            position="0 0 0">
+          </a-entity>        
         </a-nft>
 		<a-entity camera></a-entity>
     </a-scene>
